@@ -17,7 +17,7 @@ export default function UserDashboard() {
   const [time, setTime] = useState("");
   const [status, setStatus] = useState("not-in");
   const [leaveReason, setLeaveReason] = useState("");
- const [leaveDaysLeft, setLeaveDaysLeft] = useState(30);
+ 
 
 const [leave, setLeave] = useState({
   type: "casual",
