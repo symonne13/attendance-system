@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import DashboardLayout from "../layout/DashboardLayout";
 
@@ -7,18 +7,14 @@ export default function AdminDashboard() {
   const [leaves, setLeaves] = useState([]);
 
   // 🔥 FIX: always get latest token (IMPORTANT)
-  const getToken = () => localStorage.getItem("token");
+  
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+const fetchData = useCallback(async () => {
     try {
       const emp = await axios.get("http://localhost:5000/api/employees");
 
       const lev = await axios.get("http://localhost:5000/api/leave/all", {
-        headers: { Authorization: `Bearer ${getToken()}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
 
       setEmployees(emp.data);
@@ -26,8 +22,11 @@ export default function AdminDashboard() {
     } catch (err) {
       console.log("API ERROR:", err.response?.data || err.message);
     }
-  };
+  }, []);
 
+ useEffect(() => {
+  fetchData();
+}, [fetchData]);
   const deleteLeave = async (id) => {
     if (!window.confirm("Delete this leave request?")) return;
 
@@ -38,7 +37,7 @@ export default function AdminDashboard() {
         `http://localhost:5000/api/leave/${id}`,
         {
           headers: {
-            Authorization: `Bearer ${getToken()}`,
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         }
       );

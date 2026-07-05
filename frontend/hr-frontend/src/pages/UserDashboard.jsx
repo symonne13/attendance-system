@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import {
@@ -17,6 +17,13 @@ export default function UserDashboard() {
   const [time, setTime] = useState("");
   const [status, setStatus] = useState("not-in");
   const [leaveReason, setLeaveReason] = useState("");
+ const [leaveDaysLeft, setLeaveDaysLeft] = useState(30);
+
+const [leave, setLeave] = useState({
+  type: "casual",
+  from: "",
+  to: "",
+});
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -39,7 +46,7 @@ const token = localStorage.getItem("token");
   }, []);
 
   /* ================= GET USER STATUS ================= */
-  const fetchUserStatus = async () => {
+  const fetchUserStatus = useCallback(async () => {
     try {
       const res = await axios.get(
         "http://localhost:5000/api/attendance/me",
@@ -52,10 +59,10 @@ const token = localStorage.getItem("token");
     } catch (err) {
       console.log("STATUS ERROR:", err.response?.data || err.message);
     }
-  };
+  }, [token]);
 
   /* ================= NOTIFICATIONS ================= */
-  const fetchNotifications = async () => {
+const fetchNotifications = useCallback(async () => {
     try {
       const res = await axios.get(
         "http://localhost:5000/api/notifications",
@@ -70,12 +77,12 @@ const token = localStorage.getItem("token");
     } catch (err) {
       console.log(err);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchNotifications();
     fetchUserStatus();
-  }, []);
+  }, [fetchNotifications, fetchUserStatus]);
 
   /* ================= SOCKET ================= */
   useEffect(() => {
@@ -97,7 +104,7 @@ const token = localStorage.getItem("token");
     return () => {
       socket.off("leaveNotification");
     };
-  }, []);
+  }, [user.id]);
 
   /* ================= ATTENDANCE ================= */
   const handleCheckIn = async () => {
@@ -131,18 +138,29 @@ const token = localStorage.getItem("token");
   };
 
   /* ================= LEAVE ================= */
+  
+  
   const handleApplyLeave = async () => {
     if (!leaveReason) return alert("Enter reason");
 
     try {
       const res = await axios.post(
         "http://localhost:5000/api/leave/apply",
-        { reason: leaveReason },
+        {
+  reason: leaveReason,
+  type: leave.type,
+  from: leave.from,
+  to: leave.to,
+},
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       alert(res.data.message);
-      setLeaveReason("");
+      setLeave({
+  type: "casual",
+  from: "",
+  to: "",
+});
       fetchNotifications();
     }catch (err) {
       alert(err.response?.data?.message || "Error submitting leave");
@@ -253,6 +271,59 @@ const token = localStorage.getItem("token");
         <div style={styles.card}>
           <h3>Leave Request</h3>
 
+  <p>
+        Leave Balance: <strong>{leaveDaysLeft}</strong> days
+      </p>
+
+      <select
+        value={leave.type}
+        onChange={(e) =>
+          setLeave({
+            ...leave,
+            type: e.target.value,
+          })
+        }
+      >
+        <option value="casual">Casual Leave</option>
+        <option value="sick">Sick Leave</option>
+        <option value="emergency">Emergency Leave</option>
+        <option value="maternity">Maternity Leave</option>
+        <option value="paternity">Paternity Leave</option>
+      </select>
+
+     <div style={styles.leaveRow}>
+  <div style={styles.leaveField}>
+    <label>From:</label>
+
+    <input
+      type="date"
+      value={leave.from}
+      onChange={(e) =>
+        setLeave({
+          ...leave,
+          from: e.target.value,
+        })
+      }
+    />
+  </div>
+
+  <div className={styles.leaveField}>
+    <label>To:</label>
+
+    <input
+      type="date"
+      value={leave.to}
+      onChange={(e) =>
+        setLeave({
+          ...leave,
+          to: e.target.value,
+        })
+      }
+    />
+  </div>
+</div>
+
+
           <textarea
             value={leaveReason}
             onChange={(e) => setLeaveReason(e.target.value)}
@@ -268,6 +339,9 @@ const token = localStorage.getItem("token");
     </div>
   );
 };
+
+
+
   /* ================= STYLES ================= */
 
   const styles = {
@@ -362,6 +436,17 @@ const token = localStorage.getItem("token");
       border: "1px solid #ccc",
       marginBottom: 10,
     },
+leaveRow: {
+  display: "flex",
+  gap: 15,
+  marginBottom: 10,
+},
+
+leaveField: {
+  display: "flex",
+  flexDirection: "column",
+  flex: 1,
+},
 
     notificationContainer: {
       position: "relative",
